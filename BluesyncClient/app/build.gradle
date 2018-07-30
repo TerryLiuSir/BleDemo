@@ -10,11 +10,38 @@ android {
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
+
+    signingConfigs {
+        releaseKey {
+            keyAlias 'releasekey'
+            keyPassword 'ragentek!123'
+            storeFile file('SmartProjector2.jks')
+            storePassword 'ragentek!123'
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig signingConfigs.releaseKey
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+
+        debug {
+            applicationIdSuffix ".debug"
+        }
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            def apkFileName = 'SmartProjector2' + '_' + variant.name + '_' + variant.versionCode + "." + variant.versionName + '.apk'
+            outputFileName = apkFileName
+        }
+    }
+
+    lintOptions {
+        abortOnError false
+        ignoreWarnings true
     }
 }
 
@@ -25,4 +52,10 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
+
+    implementation 'org.bouncycastle:bcprov-jdk15on:1.49'
+    implementation 'com.google.protobuf:protobuf-java:3.0.0'
+    implementation 'com.alibaba:fastjson:1.1.59.android'
+    implementation "io.reactivex.rxjava2:rxandroid:2.0.1"
+    implementation "io.reactivex.rxjava2:rxjava:2.1.3"
 }
