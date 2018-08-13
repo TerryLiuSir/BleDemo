@@ -64,6 +64,7 @@ public class BleClient {
     }
 
     public void disconnect() {
+        printLog("disconnect");
         if (!mBluetoothAdapter.isEnabled()) {
             return;
         }
@@ -98,7 +99,6 @@ public class BleClient {
                             printLog("InitChannel fail");
                             mChannelInitializer.initFail();
                         }
-
                     }
                 }
             });
@@ -119,6 +119,7 @@ public class BleClient {
                         printLog("initChannel success");
                     } catch (BleConnectionException e) {
                         mChannel = null;
+                        mGatt.close();
                         mGatt.close();
 
                         mChannelInitializer.initChannel(mChannel, false, e.getMessage());

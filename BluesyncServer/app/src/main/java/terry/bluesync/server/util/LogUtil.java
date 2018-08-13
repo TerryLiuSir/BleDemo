@@ -3,7 +3,7 @@ package terry.bluesync.server.util;
 import android.util.Log;
 
 public class LogUtil {
-    private static final String MAIN_TAG = "projector2-core";
+    private static final String MAIN_TAG = "BluesyncServer";
     private static final String ERROR_TAG = "Error";
     private static final String EVENT_TAG = "Event";
 
@@ -19,16 +19,14 @@ public class LogUtil {
         Log.e(MAIN_TAG, tag + ":  " + msg);
     }
 
-
-
     public static void e(String subTag, String message, Throwable throwable) {
-        Log.d(subTag, message + ", " + throwable.toString());
+        Log.e(subTag, message + ", " + throwable.toString());
 
-        Log.d(MAIN_TAG, ERROR_TAG + "/" + subTag + ": " + message + ", " + throwable.toString());
+        Log.e(MAIN_TAG, ERROR_TAG + "/" + subTag + ": " + message + ", " + throwable.toString());
         StackTraceElement[] stackElements = throwable.getStackTrace();
         if (stackElements != null) {
             for (int i = 0; i < stackElements.length; i++) {
-                Log.d(MAIN_TAG, ERROR_TAG + "/" + subTag + ": " + "          " + stackElements[i]);
+                Log.e(MAIN_TAG, ERROR_TAG + "/" + subTag + ": " + "          " + stackElements[i]);
             }
         }
     }

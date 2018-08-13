@@ -37,11 +37,11 @@ public class BluesyncMessageCoder extends ChannelHandlerAdapter {
     }
     private Callback mCallback;
 
-    public BluesyncMessageCoder(int size, Callback callback) {
+    public BluesyncMessageCoder(int size, boolean isEncrypt,Callback callback) {
         assert (callback != null);
 
         mSendDataLen = size;
-        mIsEncrypt = false;
+        mIsEncrypt = isEncrypt;
         mSessionKey = null;
 
         mCallback = callback;

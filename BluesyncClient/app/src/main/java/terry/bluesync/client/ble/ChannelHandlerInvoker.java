@@ -9,7 +9,7 @@ import terry.bluesync.client.util.LogUtil;
 
 public class ChannelHandlerInvoker {
     private static final String TAG = ChannelHandlerInvoker.class.getSimpleName();
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
 
     private ThreadPoolExecutor executor;
 

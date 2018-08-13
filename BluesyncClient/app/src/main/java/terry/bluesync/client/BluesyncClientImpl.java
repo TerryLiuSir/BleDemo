@@ -20,6 +20,9 @@ import terry.bluesync.client.handler.BluesyncMessageCoder;
 import terry.bluesync.client.handler.LengthFieldFrameDecoder;
 import terry.bluesync.client.protocol.BluesyncMessage;
 import terry.bluesync.client.protocol.BluesyncProto;
+import terry.bluesync.client.protocol.BluesyncProtoUtil;
+
+import static terry.bluesync.client.protocol.BluesyncProto.*;
 
 public class BluesyncClientImpl extends BluesyncClient {
     private static final String TAG = BluesyncClient.class.getSimpleName();
@@ -104,35 +107,55 @@ public class BluesyncClientImpl extends BluesyncClient {
     }
 
     @Override
-    public void pushData(BluesyncMessage message) throws BluesyncException {
-        if (getState() != STATE.CONNECTED) {
-            throw new BluesyncException("send request fail, bluesync is already disconnected.");
+    public void pushData(String data) throws BluesyncException {
+        if (data == null) {
+            throw new BluesyncException("push data fail, data can not be null");
         }
-
-        mChannel.write(message);
-    }
-
-    @Override
-    public void sendRequest(BluesyncMessage message, ResponseCallback callback) throws BluesyncException {
-        this.sendRequest(message, callback, DEFAULT_TIMEOUT);
-    }
-
-    @Override
-    public void sendRequest(BluesyncMessage message, ResponseCallback callback, int timeout) throws BluesyncException {
-        assert (callback != null);
 
         if (getState() != STATE.CONNECTED) {
             throw new BluesyncException("send request fail, bluesync is already disconnected.");
         }
 
-        int seqId = message.getSeqId();
+        BluesyncMessage dataPack = BluesyncProtoUtil.getRecvDataPush(data.getBytes());
+        mChannel.write(dataPack);
+    }
 
-        if (seqId == 0) {
-            throw new BluesyncException("send request fail, seqId can not be zero");
+    @Override
+    public void sendRequest(String data, ResponseCallback callback) throws BluesyncException {
+        this.sendRequest(data, callback, DEFAULT_TIMEOUT);
+    }
+
+    @Override
+    public void sendRequest(String data, ResponseCallback callback, int timeout) throws BluesyncException {
+        if (callback == null ) {
+            throw new BluesyncException("send request fail, callback can not be null");
         }
 
-        addResponseHolder(seqId, callback, timeout);
-        mChannel.write(message);
+        if (data == null) {
+            throw new BluesyncException("send request fail, data can not be null");
+        }
+
+        if (getState() != STATE.CONNECTED) {
+            throw new BluesyncException("send request fail, bluesync is already disconnected.");
+        }
+
+        BluesyncMessage dataPack = BluesyncProtoUtil.getSendDataRequest(data.getBytes());
+        addResponseHolder(dataPack.getSeqId(), callback, timeout);
+        mChannel.write(dataPack);
+    }
+
+    @Override
+    public void sendResponse(int seqId, String data) throws BluesyncException {
+        if (data == null) {
+            throw new BluesyncException("send response fail, data can not be null");
+        }
+
+        if (!isConnected()) {
+            throw new BluesyncException("send response fail, bluesync has already disconnected.");
+        }
+
+        BluesyncMessage dataPack = BluesyncProtoUtil.getSendDataResponse(seqId, data.getBytes());
+        mChannel.write(dataPack);
     }
 
     @Override
@@ -172,7 +195,7 @@ public class BluesyncClientImpl extends BluesyncClient {
             mChannel = channel;
             ChannelPipeline pipeline = mChannel.channelPipeline();
             pipeline.addLast("frameDecoder", new LengthFieldFrameDecoder(MAX_DATA_LENGTH))
-                    .addLast("messageCoder", new BluesyncMessageCoder(MAX_DATA_LENGTH, new LoginCallback()))
+                    .addLast("messageCoder", new BluesyncMessageCoder(MAX_DATA_LENGTH,false, new LoginCallback()))
                     .addLast("messageHandler", new BluesycnMessageHandler());
         }
 
@@ -218,13 +241,33 @@ public class BluesyncClientImpl extends BluesyncClient {
         @Override
         public void read(AbstractChannelHandlerContext ctx, Object msg) throws Exception {
             BluesyncMessage protobufData = (BluesyncMessage) msg;
+            String dataStr;
 
-            if (consumeResponseHolder(protobufData)) {
-                return;
-            }
+            switch (protobufData.getCmdId()) {
+                case ECI_error:
+                    BaseResponse errResponse = (BaseResponse) protobufData.getProtobufData();
+                    printError("receive data error =" + errResponse.toString());
 
-            for(Listener listener: mListeners) {
-                listener.onReceive(protobufData);
+                    break;
+                case ECI_req_sendData:
+                    SendDataRequest sendRequest = (SendDataRequest) protobufData.getProtobufData();
+                    dataStr = new String(sendRequest.getData().toByteArray());
+                    BluesyncRequest bluesyncRequest = new BluesyncRequest(BluesyncClientImpl.this, protobufData.getSeqId(), dataStr);
+
+                    for (Listener listener : mListeners) {
+                        listener.onReceiveSendData(bluesyncRequest);
+                    }
+                    break;
+                case ECI_resp_sendData:
+                    consumeResponseHolder(protobufData);
+                    break;
+                case ECI_push_recvData:
+                    RecvDataPush dataPush = (RecvDataPush) protobufData.getProtobufData();
+                    for (Listener listener : mListeners) {
+                        dataStr = new String(dataPush.getData().toByteArray());
+                        listener.onReceivePushData(dataStr);
+                    }
+                    break;
             }
         }
     }
@@ -317,9 +360,12 @@ public class BluesyncClientImpl extends BluesyncClient {
         public void handleResponse(BluesyncMessage protobufData) {
             timer.cancel();
 
-            BluesyncProto.EmCmdId cmdId = protobufData.getCmdId();
-            if (cmdId != BluesyncProto.EmCmdId.ECI_error) {
-                callback.onSuccess(protobufData);
+            SendDataResponse response = (SendDataResponse) protobufData.getProtobufData();
+            EmCmdId cmdId = protobufData.getCmdId();
+
+            if (cmdId != EmCmdId.ECI_error) {
+                String dataStr = new String(response.getData().toByteArray());
+                callback.onSuccess(dataStr);
             } else {
                 callback.onError(protobufData.toString());
             }

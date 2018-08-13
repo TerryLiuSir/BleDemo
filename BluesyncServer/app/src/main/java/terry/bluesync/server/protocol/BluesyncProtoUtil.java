@@ -3,13 +3,10 @@ package terry.bluesync.server.protocol;
 
 import com.google.protobuf.ByteString;
 
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import terry.bluesync.server.protocol.BluesyncProto.BaseRequest;
 import terry.bluesync.server.protocol.BluesyncProto.EmCmdId;
-import terry.bluesync.server.protocol.BluesyncProto.EmErrorCode;
-
 import static terry.bluesync.server.protocol.BluesyncProto.*;
 
 public class BluesyncProtoUtil {
@@ -40,8 +37,9 @@ public class BluesyncProtoUtil {
     }
 
     public static BluesyncMessage getSendDataResponse(int seqId, byte[] data) {
-        SendDataRequest.Builder builder = SendDataRequest.newBuilder();
-        builder.setBaseRequest(BaseRequest.newBuilder().build());
+        SendDataResponse.Builder builder = SendDataResponse.newBuilder();
+
+        builder.setBaseResponse(getBaseResponseMessage(EmCmdId.ECI_none_VALUE, null));
         if (data != null) {
             builder.setData(ByteString.copyFrom(data));
         }
@@ -54,7 +52,7 @@ public class BluesyncProtoUtil {
         builder.setBasePush(BasePush.newBuilder().build())
                 .setData(ByteString.copyFrom(data));
 
-        return new BluesyncMessage(0, EmCmdId.ECI_push_recvData, BaseRequest.newBuilder().build());
+        return new BluesyncMessage(0, EmCmdId.ECI_push_recvData, builder.build());
     }
 
     public static BaseResponse getBaseResponseMessage(int error, String message) {

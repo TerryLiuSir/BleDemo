@@ -8,6 +8,8 @@ import android.content.IntentFilter;
 import android.util.Log;
 import android.util.SparseArray;
 
+import com.google.protobuf.ByteString;
+
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -49,6 +51,7 @@ public class BluesyncControllerImpl implements BluesyncController {
         mBleController.registerChannelInitializer(mChannelInitializer);
 
         mListeners = new LinkedList<>();
+        mResponseHolderMap = new SparseArray<>();
     }
 
     @Override
@@ -136,6 +139,10 @@ public class BluesyncControllerImpl implements BluesyncController {
 
     @Override
     public void sendRequest(String data, ResponseCallback callback, int timeout) throws BluesyncException {
+        if (callback == null ) {
+            throw new BluesyncException("send request fail, callback can not be null");
+        }
+
         if (data == null) {
             throw new BluesyncException("send request fail, data can not be null");
         }
@@ -229,7 +236,8 @@ public class BluesyncControllerImpl implements BluesyncController {
 
             EmCmdId cmdId = protobufData.getCmdId();
             if (cmdId != EmCmdId.ECI_error) {
-                callback.onSuccess(response.getData().toString());
+                String dataStr = new String(response.getData().toByteArray());
+                callback.onSuccess(dataStr);
             } else {
                 callback.onError(protobufData.toString());
             }
@@ -248,7 +256,7 @@ public class BluesyncControllerImpl implements BluesyncController {
             ChannelPipeline pipeline = ch.channelPipeline();
 
             pipeline.addLast("frameDecoder", new LengthFieldFrameDecoder(MAX_DATA_LENGTH))
-                    .addLast("messageCoder", new BluesyncMessageCoder(MAX_DATA_LENGTH, true, new LoginCallback()))
+                    .addLast("messageCoder", new BluesyncMessageCoder(MAX_DATA_LENGTH, false, new LoginCallback()))
                     .addLast("messageHandler", new BluesycnMessageHandler());
         }
     };
@@ -282,6 +290,7 @@ public class BluesyncControllerImpl implements BluesyncController {
         public void active(AbstractChannelHandlerContext ctx) throws Exception {
             Channel newChannel = ctx.channel();
             if (mActiveChannel != null && mActiveChannel != newChannel) {
+                printLog("disconnect for already connected");
                 mActiveChannel.disconnect();
             }
 
@@ -301,6 +310,7 @@ public class BluesyncControllerImpl implements BluesyncController {
         @Override
         public void read(AbstractChannelHandlerContext ctx, Object msg) throws Exception {
             BluesyncMessage protobufData = (BluesyncMessage) msg;
+            String dataStr;
 
             switch (protobufData.getCmdId()) {
                 case ECI_error:
@@ -310,7 +320,8 @@ public class BluesyncControllerImpl implements BluesyncController {
                     break;
                 case ECI_req_sendData:
                     SendDataRequest sendRequest = (SendDataRequest) protobufData.getProtobufData();
-                    BluesyncRequest bluesyncRequest = new BluesyncRequest(BluesyncControllerImpl.this, protobufData.getSeqId(), sendRequest.getData().toString());
+                    dataStr = new String(sendRequest.getData().toByteArray());
+                    BluesyncRequest bluesyncRequest = new BluesyncRequest(BluesyncControllerImpl.this, protobufData.getSeqId(), dataStr);
 
                     for (Listener listener : mListeners) {
                         listener.onReceiveSendData(bluesyncRequest);
@@ -322,7 +333,8 @@ public class BluesyncControllerImpl implements BluesyncController {
                 case ECI_push_recvData:
                     RecvDataPush dataPush = (RecvDataPush) protobufData.getProtobufData();
                     for (Listener listener : mListeners) {
-                        listener.onReceivePushData(dataPush.getData().toString());
+                        dataStr = new String(dataPush.getData().toByteArray());
+                        listener.onReceivePushData(dataStr);
                     }
                     break;
             }

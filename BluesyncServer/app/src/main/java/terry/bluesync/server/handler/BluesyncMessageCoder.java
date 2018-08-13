@@ -326,6 +326,7 @@ public class BluesyncMessageCoder extends ChannelHandlerAdapter {
 
             return retObject;
         } catch (Exception e) {
+            printError("parse error, cmdId=" + cmdId);
             throw new BluesyncMessageCoderException(seqId, BluesyncProto.EmErrorCode.EEC_decode_VALUE, "parse protobuf fail.");
         }
     }
@@ -338,7 +339,7 @@ public class BluesyncMessageCoder extends ChannelHandlerAdapter {
         BluesyncMessage errResponse = new BluesyncMessage(exception.getSeqId(), BluesyncProto.EmCmdId.ECI_error, builder.build());
         ctx.fireWrite(errResponse);
 
-        LogUtil.e(TAG, exception.toString());
+        LogUtil.e(TAG, exception.toString(), exception);
     }
 
     @Override

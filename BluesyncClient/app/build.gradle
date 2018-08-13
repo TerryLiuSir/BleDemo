@@ -11,31 +11,14 @@ android {
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
 
-    signingConfigs {
-        releaseKey {
-            keyAlias 'releasekey'
-            keyPassword 'ragentek!123'
-            storeFile file('SmartProjector2.jks')
-            storePassword 'ragentek!123'
-        }
-    }
-
     buildTypes {
         release {
-            signingConfig signingConfigs.releaseKey
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
 
         debug {
             applicationIdSuffix ".debug"
-        }
-    }
-
-    applicationVariants.all { variant ->
-        variant.outputs.all {
-            def apkFileName = 'SmartProjector2' + '_' + variant.name + '_' + variant.versionCode + "." + variant.versionName + '.apk'
-            outputFileName = apkFileName
         }
     }
 

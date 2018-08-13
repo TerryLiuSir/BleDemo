@@ -7,8 +7,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import terry.bluesync.client.protocol.BluesyncProto.BaseRequest;
 import terry.bluesync.client.protocol.BluesyncProto.BaseResponse;
+import terry.bluesync.client.protocol.BluesyncProto.EmCmdId;
 import terry.bluesync.client.protocol.BluesyncProto.RecvDataPush;
 import terry.bluesync.client.protocol.BluesyncProto.SendDataRequest;
+
+import static terry.bluesync.client.protocol.BluesyncProto.*;
 
 public class BluesyncProtoUtil {
     private static final int MIN_SEQ_NUM = Short.MAX_VALUE;
@@ -34,25 +37,26 @@ public class BluesyncProtoUtil {
         builder.setBaseRequest(BaseRequest.newBuilder().build())
             .setData(ByteString.copyFrom(data));
 
-        return  new BluesyncMessage(genSeqId(), BluesyncProto.EmCmdId.ECI_req_sendData, builder.build());
+        return  new BluesyncMessage(genSeqId(), EmCmdId.ECI_req_sendData, builder.build());
     }
 
-    public static BluesyncMessage getSendDataResponse(byte[] data) {
-        SendDataRequest.Builder builder = SendDataRequest.newBuilder();
-        builder.setBaseRequest(BaseRequest.newBuilder().build());
+    public static BluesyncMessage getSendDataResponse(int seqId, byte[] data) {
+        SendDataResponse.Builder builder = SendDataResponse.newBuilder();
+
+        builder.setBaseResponse(getBaseResponseMessage(EmCmdId.ECI_none_VALUE, null));
         if (data != null) {
             builder.setData(ByteString.copyFrom(data));
         }
 
-        return  new BluesyncMessage(genSeqId(), BluesyncProto.EmCmdId.ECI_resp_sendData, builder.build());
+        return  new BluesyncMessage(seqId, EmCmdId.ECI_resp_sendData, builder.build());
     }
 
     public static BluesyncMessage getRecvDataPush(byte[] data) {
         RecvDataPush.Builder builder = RecvDataPush.newBuilder();
-        builder.setBasePush(BluesyncProto.BasePush.newBuilder().build())
+        builder.setBasePush(BasePush.newBuilder().build())
                 .setData(ByteString.copyFrom(data));
 
-        return new BluesyncMessage(genSeqId(), BluesyncProto.EmCmdId.ECI_push_recvData, BaseRequest.newBuilder().build());
+        return new BluesyncMessage(genSeqId(), EmCmdId.ECI_push_recvData, builder.build());
     }
 
     public static BaseResponse getBaseResponseMessage(int error, String message) {

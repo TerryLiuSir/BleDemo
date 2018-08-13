@@ -1,8 +1,5 @@
 package terry.bluesync.client;
 
-
-import terry.bluesync.client.protocol.BluesyncMessage;
-
 public abstract class BluesyncClient {
     public enum STATE {
         CONNECTING,
@@ -13,12 +10,13 @@ public abstract class BluesyncClient {
 
     public interface Listener {
         void onSateChange(STATE state);
-        void onReceive(BluesyncMessage message);
+        void onReceiveSendData(BluesyncRequest request);
+        void onReceivePushData(String data);
     }
 
     public interface ConnectionCallback {
         void onSuccess();
-        void onFailure(String msg);
+        void onFailure(String message);
     }
 
     public interface DisconnectionCallback {
@@ -26,28 +24,29 @@ public abstract class BluesyncClient {
     }
 
     public interface ResponseCallback {
-        void onSuccess(BluesyncMessage protobufData);
+        void onSuccess(String data);
         void onError(String message);
     }
+
+    abstract public STATE getState();
 
     public boolean isConnected() {
         return getState() == STATE.CONNECTED;
     }
+
+    abstract public String getAddress();
 
     abstract public void addListener(Listener listener);
 
     abstract public void removeListener(Listener listener);
 
     abstract public void connect(String address, ConnectionCallback callback);
-
     abstract public void disconnect(DisconnectionCallback callback);
 
-    abstract public void pushData(BluesyncMessage message) throws BluesyncException;
+    abstract public void pushData(String data) throws BluesyncException;
 
-    abstract public void sendRequest(BluesyncMessage message, ResponseCallback callback) throws BluesyncException;
-    abstract public void sendRequest(BluesyncMessage message, ResponseCallback callback, int timeout) throws BluesyncException;
+    abstract public void sendRequest(String data, ResponseCallback callback) throws BluesyncException;
+    abstract public void sendRequest(String data, ResponseCallback callback, int timeout) throws BluesyncException;
 
-    abstract public String getAddress();
-
-    abstract public STATE getState();
+    abstract void sendResponse(int seqId, String data) throws BluesyncException;
 }

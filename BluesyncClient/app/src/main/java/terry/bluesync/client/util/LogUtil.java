@@ -3,7 +3,7 @@ package terry.bluesync.client.util;
 import android.util.Log;
 
 public class LogUtil {
-    private static final String MAIN_TAG = "projector2-core";
+    private static final String MAIN_TAG = "BluesyncClient";
     private static final String ERROR_TAG = "Error";
     private static final String EVENT_TAG = "Event";
 

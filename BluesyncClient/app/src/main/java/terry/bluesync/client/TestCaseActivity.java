@@ -1,4 +1,4 @@
-package com.ragentek.projector;
+package terry.bluesync.client;
 
 import android.app.Activity;
 import android.content.ComponentName;
@@ -18,18 +18,14 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 
-import terry.bluesync.client.BluesyncAdapter;
-import terry.bluesync.client.BluesyncClient;
 import terry.bluesync.client.BluesyncClient.Listener;
 import terry.bluesync.client.BluesyncClient.ResponseCallback;
-import terry.bluesync.client.BluesyncException;
-import terry.bluesync.client.BluesyncService;
 import terry.bluesync.client.R;
 import terry.bluesync.client.protocol.BluesyncMessage;
 import terry.bluesync.client.protocol.BluesyncProtoUtil;
 
-public class BluesyncProtocolTestActivity extends Activity {
-    private static final String TAG = BluesyncProtocolTestActivity.class.getSimpleName();
+public class TestCaseActivity extends Activity {
+    private static final String TAG = TestCaseActivity.class.getSimpleName();
     public static final String EXTRA_BLUE_ADDRESS = "blue_address";
     private static final String LARGE_DATA = "The Spring Framework provides a comprehensive programming and configuration model for modern Java-based enterprise applications - on any kind of deployment platform. A key element of Spring is infrastructural support at the application level: Spring focuses on the \"plumbing\" of enterprise applications so that teams can focus on application-level business logic, without unnecessary ties to specific deployment environments.";
 
@@ -43,42 +39,49 @@ public class BluesyncProtocolTestActivity extends Activity {
     private Handler mHandler = new Handler();
     private final CaseItemGroup mRootCaseGroup = new CaseItemGroup();
 
-    private abstract class CaseItem {
-        private String title;
+    private enum CaseType {
+        REQUEST,
+        PUSH
+    }
 
-        public CaseItem(String title) {
+    private class CaseItem {
+        private CaseType type;
+        private String title;
+        private String message;
+
+        public CaseItem(CaseType type, String title, String message) {
+            this.type = type;
             this.title = title;
+            this.message = message;
         }
 
         public void test() {
             try {
-                BluesyncMessage message = getMessage();
-                mBluesyncClient.sendRequest(message, new MyResponseCallback());
-
-                printLog("=======Send request ========");
-                printLog(message.toString());
+                switch (type) {
+                    case REQUEST:
+                        mBluesyncClient.sendRequest(message, new CaseResponseCallback());
+                        printLog("Request, data=" + message);
+                        break;
+                    case PUSH:
+                        mBluesyncClient.pushData(message);
+                        printLog("Push, data=" + message);
+                        break;
+                }
             } catch (BluesyncException e) {
                 printLog(e.toString());
             }
-        }
+        };
 
-        abstract public BluesyncMessage getMessage();
+        class CaseResponseCallback implements ResponseCallback {
 
-        class MyResponseCallback implements ResponseCallback {
             @Override
-            public void onSuccess(BluesyncMessage protobufData) {
-                printLog("=======Response message ========");
-                printLog(protobufData.toString());
-            }
-
-            private void printSimple(BluesyncMessage protobufData) {
-                printLog("[" + protobufData.getSeqId() + "], cmdId=" + protobufData.getCmdId());
+            public void onSuccess(String data) {
+                printLog("Response, data=" + data);
             }
 
             @Override
             public void onError(String message) {
-                printLog("=======Response error ========");
-                printLog(message);
+                printLog("Response, error=" + message);
             }
         }
     }
@@ -180,17 +183,27 @@ public class BluesyncProtocolTestActivity extends Activity {
         }
     };
 
-    private Listener mListener = new Listener() {
+    private Listener mListener = new BluesyncClient.Listener() {
 
         @Override
         public void onSateChange(BluesyncClient.STATE state) {
-            printLog("state=" + state.toString());
+            printLog("State=" + state.toString());
         }
 
         @Override
-        public void onReceive(BluesyncMessage message) {
-            printLog("=======Receive message ========");
-            printLog(message.toString());
+        public void onReceiveSendData(BluesyncRequest request) {
+            printLog("ReceiveSendData, request=" + request);
+
+            try {
+                request.sendResponse("{response:" + request.getData() + "}");
+            } catch (BluesyncException e) {
+                printLog("Send response error=" + e.toString());
+            }
+        }
+
+        @Override
+        public void onReceivePushData(String data) {
+            printLog("ReceivePushData, push=" + data);
         }
     };
 
@@ -214,114 +227,19 @@ public class BluesyncProtocolTestActivity extends Activity {
     };
 
     private void initCases() {
-        mRootCaseGroup.add(createConnection());
-        mRootCaseGroup.add(createDisconnection());
-        mRootCaseGroup.add(createConnection100Times());
-        mRootCaseGroup.add(createSendData());
-        mRootCaseGroup.add(createPushData());
+        mRootCaseGroup.add(createRequestCase());
+        mRootCaseGroup.add(createPushCase());
 
         mListView.setAdapter(new ArrayAdapter(this,
                 android.R.layout.simple_list_item_1, mRootCaseGroup.getTitleList()));
     }
 
-    private CaseItem createConnection() {
-        return new CaseItem("connect test") {
-            @Override
-            public void test() {
-                mConnectionTimes = 0;
-                mBluesyncClient.connect(mAddress, null);
-            }
-
-            @Override
-            public BluesyncMessage getMessage() {
-                return null;
-            }
-        };
+    private CaseItem createRequestCase() {
+        return new CaseItem(CaseType.REQUEST,"Request String", "This is request data");
     }
 
-    private CaseItem createDisconnection() {
-        return new CaseItem("disconnect test") {
-            @Override
-            public void test() {
-                mBluesyncClient.disconnect(null);
-            }
-
-            @Override
-            public BluesyncMessage getMessage() {
-                return null;
-            }
-        };
-    }
-
-    private final static int MAX_CONNECTION_TIME = 100;
-    private int mConnectionTimes = 0;
-
-    private CaseItem createConnection100Times() {
-        return new CaseItem("connect stress test(100 times)") {
-            @Override
-            public void test() {
-                mConnectionTimes = 0;
-                mHandler.post(mDisconnectionRunnable);
-            }
-
-            @Override
-            public BluesyncMessage getMessage() {
-                return null;
-            }
-        };
-    }
-
-    private Runnable mConnectionRunnable = new Runnable() {
-        @Override
-        public void run() {
-            if (mConnectionTimes++ > MAX_CONNECTION_TIME) {
-                printLog("connection " + MAX_CONNECTION_TIME + " times success");
-                return;
-            }
-
-            mBluesyncClient.connect(mAddress, new BluesyncClient.ConnectionCallback() {
-
-                @Override
-                public void onSuccess() {
-                    mHandler.post(mDisconnectionRunnable);
-                }
-
-                @Override
-                public void onFailure(String msg) {
-                    printLog("connection " + mConnectionTimes + " times failure");
-                }
-            });
-        }
-    };
-
-    private Runnable mDisconnectionRunnable = new Runnable() {
-        @Override
-        public void run() {
-            mBluesyncClient.disconnect(new BluesyncClient.DisconnectionCallback() {
-                @Override
-                public void onFinish() {
-                    mHandler.postDelayed(mConnectionRunnable, 1000);
-                }
-            });
-        }
-    };
-
-    private CaseItem createSendData() {
-        return new CaseItem("send data") {
-            @Override
-            public BluesyncMessage getMessage() {
-                return BluesyncProtoUtil.getSendDataRequest("client send data request".getBytes());
-            }
-        };
-    }
-
-    private CaseItem createPushData() {
-        return new CaseItem("push data") {
-            @Override
-            public BluesyncMessage getMessage() {
-                return BluesyncProtoUtil.getRecvDataPush("client push data request".getBytes());
-            }
-        };
+    private CaseItem createPushCase() {
+        return new CaseItem(CaseType.PUSH,"Push String", "This is push data");
     }
 
     public void printLog(final String message) {

@@ -25,4 +25,9 @@ public class BluesyncException extends Exception {
     public BluesyncException(Throwable cause) {
         super(cause);
     }
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + ": " + getMessage();
+    }
 }

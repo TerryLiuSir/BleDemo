@@ -1,4 +1,4 @@
-package com.ragentek.projector;
+package terry.bluesync.client;
 
 import android.app.ListActivity;
 import android.content.ComponentName;
@@ -7,17 +7,12 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
 import java.util.List;
 
-import terry.bluesync.client.BluesyncAdapter;
-import terry.bluesync.client.BluesyncDevice;
-import terry.bluesync.client.BluesyncScanner;
-import terry.bluesync.client.BluesyncService;
 import terry.bluesync.client.util.AesCoder;
 import terry.bluesync.client.util.ByteUtil;
 import terry.bluesync.client.util.LogUtil;
@@ -34,13 +29,6 @@ public class ScannerTestActivity extends ListActivity {
         mArrayAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1);
         setListAdapter(mArrayAdapter);
         boundService();
-
-        byte[] sn = "12323123".getBytes();
-        byte[] aesSign = AesCoder.encodeAesSign(sn);
-        boolean ret = AesCoder.decodeAesSign(aesSign, sn);
-
-        LogUtil.d("Test", "sessionKey=" + ByteUtil.byte2HexString(AesCoder.genSessionKey()));
-        LogUtil.d("Test", "ret =" + ret);
     }
 
     @Override
@@ -115,8 +103,8 @@ public class ScannerTestActivity extends ListActivity {
     @Override
     protected void onListItemClick(ListView l, View v, int position, long id) {
         BluesyncDevice scanResult = (BluesyncDevice) mArrayAdapter.getItem(position);
-        Intent intent = new Intent(this, BluesyncProtocolTestActivity.class);
-        intent.putExtra(BluesyncProtocolTestActivity.EXTRA_BLUE_ADDRESS, scanResult.getAddress());
+        Intent intent = new Intent(this, TestCaseActivity.class);
+        intent.putExtra(TestCaseActivity.EXTRA_BLUE_ADDRESS, scanResult.getAddress());
         startActivity(intent);
     }
 }
